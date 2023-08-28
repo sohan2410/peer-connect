@@ -1,8 +1,6 @@
 import socket
-import select
 import errno
 import sys
-from _thread import *
 import threading
 
 print_lock = threading.Lock()
@@ -50,7 +48,7 @@ def on(client_socket):
             sys.exit()
 
 
-start_new_thread(on, (client_socket,))
+threading.Thread(target=on, args=(client_socket,)).start()
 
 while True:
     message = input(f'{my_username} > ')
