@@ -1,7 +1,9 @@
 import socket
-import time
-import pickle
 import select
+import logging
+
+logging.basicConfig(
+    format='%(asctime)s - %(levelname)s - %(message)s - Line %(lineno)d', level=logging.DEBUG)
 
 HEADER_LENGTH = 10
 
@@ -24,9 +26,11 @@ def receive_message(client_socket):
         message_header = client_socket.recv(HEADER_LENGTH)
         if not len(message_header):
             return False
-        message_length = int(message_header.decode('utf-8').strip())
+        message_length = int(message_header.decode('utf-8').strip()[1:])
+        # message_type = message_header.decode('utf-8').strip()[0]
         return {'header': message_header, 'data': client_socket.recv(message_length)}
-    except:
+    except Exception as e:
+        logging.error(f'Error in receive_message: {e}')
         return False
 
 
