@@ -4,6 +4,8 @@ import sys
 import threading
 import logging
 import time
+import os
+import tqdm
 
 logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s - Line %(lineno)d', level=logging.DEBUG)
@@ -20,7 +22,7 @@ client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 client_socket.connect((IP, PORT))
 
-client_socket.setblocking(False)
+# client_socket.setblocking(False)
 
 username = my_username.encode('utf-8')
 username_header = f"n{len(username):<{HEADER_LENGTH-1}}".encode('utf-8')
@@ -41,18 +43,7 @@ def on(client_socket):
             message_length = int(message_header.decode('utf-8').strip()[1:])
             message = client_socket.recv(message_length).decode('utf-8')
             if message_type == 'F':
-                print('File received from client...')
-                filename = './tmp/'+str(int(time.time()))+'.txt'
-                fo = open(filename, 'w')
-                while message:
-                    if not message:
-                        break
-                    else:
-                        fo.write(message)
-                        message_length -= len(message)
-                        message = client_socket.recv(
-                            min(message_length, 1024)).decode('utf-8')
-                fo.close()
+                pass
             else:
                 with print_lock:
                     print('\n' + f'{username} > {message}')
@@ -67,37 +58,43 @@ def on(client_socket):
         except Exception as e:
             logging.error("An exception occurred at line %d: %s",
                           e.__traceback__.tb_lineno, e, exc_info=True)
-
-            # print('Reading error: '.format(str(e)))
             sys.exit()
 
 
 threading.Thread(target=on, args=(client_socket,)).start()
 
+
+def send_message(message):
+    message = message.encode('utf-8')
+    message_header = f"M{len(message):<{HEADER_LENGTH-1}}".encode('utf-8')
+    client_socket.send(message_header + message)
+
+
+def send_file(filename):
+    try:
+        file_size = os.path.getsize(filename)
+        progress = tqdm.tqdm(range(
+            file_size), f"Sending {filename}", unit="B", unit_scale=True, unit_divisor=1024)
+        with open(filename, 'rb') as file:
+            message_header = f"F{file_size:<{HEADER_LENGTH-1}}".encode('utf-8')
+            client_socket.send(message_header)
+            while True:
+                data = file.read(1024)
+                if not data:
+                    break
+                client_socket.send(data)
+                progress.update(len(data))
+
+    except Exception as e:
+        logging.error("An exception occurred at line %d: %s",
+                      e.__traceback__.tb_lineno, e, exc_info=True)
+
+
 while True:
     message = input(f'{my_username} > ')
     if message:
-
         if message == 'file':
             filename = input('Enter the name of the file: ')
-            try:
-                file = open(filename, 'r')
-                file_data = file.read()
-                if not file_data:
-                    break
-                while file_data:
-                    message = str(file_data).encode('utf-8')
-                    message_header = f"F{len(message):<{HEADER_LENGTH-1}}".encode(
-                        'utf-8')
-                    client_socket.send(message_header + message)
-                    file_data = file.read()
-                file.close()
-            except Exception as e:
-                logging.error("An exception occurred at line %d: %s",
-                              e.__traceback__.tb_lineno, e, exc_info=True)
-
+            send_file(filename)
         else:
-            message = message.encode('utf-8')
-            message_header = f"M{len(message):<{HEADER_LENGTH-1}}".encode(
-                'utf-8')
-            client_socket.send(message_header + message)
+            send_message(message)

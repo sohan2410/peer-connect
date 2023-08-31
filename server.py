@@ -1,7 +1,7 @@
 import socket
 import select
 import logging
-
+import time
 logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s - Line %(lineno)d', level=logging.DEBUG)
 
@@ -27,8 +27,23 @@ def receive_message(client_socket):
         if not len(message_header):
             return False
         message_length = int(message_header.decode('utf-8').strip()[1:])
-        # message_type = message_header.decode('utf-8').strip()[0]
+        message_type = message_header.decode('utf-8').strip()[0]
+        if message_type == 'F':
+            filename = './tmp/' + str(int(time.time())) + '.txt'
+            received = 0
+            data = b""
+            with open(filename, "wb") as f:
+                while received != message_length:
+                    new_data = client_socket.recv(message_length)
+                    if not len(new_data):
+                        break
+                    data += new_data
+                    received += len(new_data)
+                f.write(data)
+                f.flush()
+            return None
         return {'header': message_header, 'data': client_socket.recv(message_length)}
+
     except Exception as e:
         logging.error(f'Error in receive_message: {e}')
         return False
@@ -49,22 +64,25 @@ while True:
                 *client_address, user['data'].decode('utf-8')))
         else:
             message = receive_message(notified_socket)
+            if message is None:
+                continue
             if message is False:
                 print('Closed connection from: {}'.format(
                     clients[notified_socket]['data'].decode('utf-8')))
                 sockets_list.remove(notified_socket)
                 del clients[notified_socket]
                 continue
-            user = clients[notified_socket]
-            print(
-                f'Received message from {user["data"].decode("utf-8")}: {message["data"].decode("utf-8")}')
-            for client_socket in clients:
-                if client_socket != notified_socket:
-                    try:
-                        client_socket.send(
-                            user["header"] + user["data"] + message["header"] + message["data"])
-                    except:
-                        print("error")
+            else:
+                user = clients[notified_socket]
+                print(
+                    f'Received message from {user["data"].decode("utf-8")}: {message["data"].decode("utf-8")}')
+                for client_socket in clients:
+                    if client_socket != notified_socket:
+                        try:
+                            client_socket.send(
+                                user["header"] + user["data"] + message["header"] + message["data"])
+                        except Exception as e:
+                            print("error", e)
 
     for notified_socket in exception_sockets:
         sockets_list.remove(notified_socket)
