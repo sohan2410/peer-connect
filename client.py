@@ -7,14 +7,16 @@ import time
 import os
 import tqdm
 
+from utils.sockets import get_ip
+
 logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s - Line %(lineno)d', level=logging.DEBUG)
 
-print_lock = threading.Lock()
+thread_lock = threading.Lock()
 
 HEADER_LENGTH = 10
 
-IP = "127.0.0.1"
+IP = get_ip()
 PORT = 1234
 my_username = input("Username: ")
 
@@ -45,7 +47,7 @@ def on(client_socket):
             if message_type == 'F':
                 pass
             else:
-                with print_lock:
+                with thread_lock:
                     print('\n' + f'{username} > {message}')
 
         except IOError as e:
