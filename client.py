@@ -95,6 +95,6 @@ while True:
     if message:
         if message == 'file':
             filename = input('Enter the name of the file: ')
-            send_file(filename)
+            threading.Thread(target=send_file, args=(filename,)).start()
         else:
-            send_message(message)
+            threading.Thread(target=send_message, args=(message,)).start()
