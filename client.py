@@ -5,7 +5,7 @@ import threading
 import logging
 import time
 import os
-import tqdm
+# import tqdm
 
 from utils.sockets import get_ip
 

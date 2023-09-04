@@ -2,6 +2,7 @@ import socket
 import select
 import logging
 import time
+import threading
 logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s - Line %(lineno)d', level=logging.DEBUG)
 
@@ -21,18 +22,13 @@ clients = {}
 print(f'Listening for connections on {IP}:{PORT}')
 
 
-def receive_message(client_socket):
+
+def receive_file(client_socket,message_length):
     try:
-        message_header = client_socket.recv(HEADER_LENGTH)
-        if not len(message_header):
-            return False
-        message_length = int(message_header.decode('utf-8').strip()[1:])
-        message_type = message_header.decode('utf-8').strip()[0]
-        if message_type == 'F':
-            filename = './tmp/' + str(int(time.time())) + '.txt'
-            received = 0
-            data = b""
-            with open(filename, "wb") as f:
+        filename = './tmp/' + str(int(time.time())) + '.txt'
+        received = 0
+        data = b""
+        with open(filename, "wb") as f:
                 while received != message_length:
                     new_data = client_socket.recv(message_length)
                     if not len(new_data):
@@ -41,8 +37,23 @@ def receive_message(client_socket):
                     received += len(new_data)
                 f.write(data)
                 f.flush()
-            return None
-        return {'header': message_header, 'data': client_socket.recv(message_length)}
+    except Exception as e:
+        logging.error(f'Error in receive_file: {e}')
+        return False 
+           
+
+def receive_message(client_socket):
+    try:
+        message_header = client_socket.recv(HEADER_LENGTH)
+        if not len(message_header):
+            return False
+        message_length = int(message_header.decode('utf-8').strip()[1:])
+        message_type = message_header.decode('utf-8').strip()[0]
+        if message_type == 'F':
+            recieve_file_thread=threading.Thread(target=receive_file,args=(client_socket,message_length))
+            recieve_file_thread.start()
+        else:
+         return {'header': message_header, 'data': client_socket.recv(message_length)}
 
     except Exception as e:
         logging.error(f'Error in receive_message: {e}')
