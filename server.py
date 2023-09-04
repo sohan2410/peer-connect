@@ -3,12 +3,14 @@ import select
 import logging
 import time
 import threading
+from utils.sockets import get_ip
+import os
 logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s - Line %(lineno)d', level=logging.DEBUG)
 
 HEADER_LENGTH = 10
 
-IP = "127.0.0.1"
+IP = get_ip()
 PORT = 1234
 
 server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -28,6 +30,7 @@ def receive_file(client_socket,message_length):
         filename = './tmp/' + str(int(time.time())) + '.txt'
         received = 0
         data = b""
+        os.makedirs(os.path.dirname(filename), exist_ok=True)
         with open(filename, "wb") as f:
                 while received != message_length:
                     new_data = client_socket.recv(message_length)
@@ -47,11 +50,21 @@ def receive_message(client_socket):
         message_header = client_socket.recv(HEADER_LENGTH)
         if not len(message_header):
             return False
-        message_length = int(message_header.decode('utf-8').strip()[1:])
+        
+        if len(message_header) < HEADER_LENGTH:
+            return False
+
+        # Extract the message length from the header
+        message_length_str = message_header.decode('utf-8').strip()[1:]
+        if not message_length_str.isdigit():
+            return None
+
+        message_length = int(message_length_str)
         message_type = message_header.decode('utf-8').strip()[0]
         if message_type == 'F':
             recieve_file_thread=threading.Thread(target=receive_file,args=(client_socket,message_length))
             recieve_file_thread.start()
+            return None
         else:
          return {'header': message_header, 'data': client_socket.recv(message_length)}
 
