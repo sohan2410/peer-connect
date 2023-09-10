@@ -137,10 +137,12 @@ class App(QWidget):
         print(username)
         # self.close()
 
-    def connectToServer(client_socket):
+    def connectToServer(self, client_socket):
         while True:
+            print("hello")
             try:
                 username_header = client_socket.recv(HEADER_LENGTH)
+                print(username_header)
                 if not len(username_header):
                     print('Connection closed by the server')
                     sys.exit()
@@ -155,6 +157,7 @@ class App(QWidget):
                 if message_type == 'F':
                     pass
                 else:
+
                     with thread_lock:
                         print('\n' + f'{username} > {message}')
 
