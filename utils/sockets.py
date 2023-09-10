@@ -8,6 +8,3 @@ def get_ip():
     except Exception:
         IPAddr = "127.0.0.1"
     return IPAddr
-
-
-print(get_ip())

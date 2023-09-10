@@ -21,6 +21,11 @@ PORT = 1234
 my_username = input("Username: ")
 
 client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+client_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+
+client_socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+client_socket.setsockopt(socket.SOL_SOCKET, socket.SO_PRIORITY, 0x06)
+# client_socket.bind((IP, 40046))
 
 client_socket.connect((IP, PORT))
 
@@ -42,7 +47,8 @@ def on(client_socket):
             username = client_socket.recv(username_length).decode('utf-8')
             message_header = client_socket.recv(HEADER_LENGTH)
             message_type = chr(message_header[0])
-            message_length = int(message_header.decode('utf-8').strip()[1:])
+            message_length = int(message_header.decode(
+                'utf-8').strip().split('_')[0][1:])
             message = client_socket.recv(message_length).decode('utf-8')
             if message_type == 'F':
                 pass
@@ -66,15 +72,20 @@ def on(client_socket):
 threading.Thread(target=on, args=(client_socket,)).start()
 
 
-def send_message(message):
-    message = message.encode('utf-8')
+def send_message(message, username=None):
     message_header = f"M{len(message):<{HEADER_LENGTH-1}}".encode('utf-8')
+    if (username):
+        message_type = "P"+str(len(message))+"_"+username
+        message_header = '{:<{}}'.format(
+            message_type, HEADER_LENGTH).encode('utf-8')
+    message = message.encode('utf-8')
     client_socket.send(message_header + message)
 
 
 def send_file(filename):
     try:
         file_size = os.path.getsize(filename)
+        print(file_size)
         progress = tqdm.tqdm(range(
             file_size), f"Sending {filename}", unit="B", unit_scale=True, unit_divisor=1024)
         with open(filename, 'rb') as file:
@@ -98,5 +109,11 @@ while True:
         if message == 'file':
             filename = input('Enter the name of the file: ')
             threading.Thread(target=send_file, args=(filename,)).start()
+        elif message == '1':
+            username = input("Enter the username: ")
+            text = input('Enter the text: ')
+            threading.Thread(target=send_message,
+                             args=(text, username,)).start()
+
         else:
             threading.Thread(target=send_message, args=(message,)).start()
