@@ -37,7 +37,7 @@ PORT = 1234
 class App(QWidget):
     def __init__(self):
         super().__init__()
-        self.title = "Welcome to peer connect center"
+        self.title = "Welcome to P2P Center"
 
         # self.left = 10
         # self.right = 10
@@ -90,8 +90,8 @@ class App(QWidget):
 
             # Remove the button and textbox
             self.new_window = QMainWindow()
-            self.new_window.setWindowTitle("Welcome  <" + username + ">")
-            self.new_window.setGeometry(50, 50, self.width, self.height)
+            self.new_window.setWindowTitle("Welcome to P2P <" + username + ">")
+            self.new_window.setGeometry(50, 50, 400, 320)
 
             central_widget = QWidget()
             self.new_window.setCentralWidget(central_widget)
@@ -104,12 +104,14 @@ class App(QWidget):
             self.message_textbox.setFixedWidth(240)
             self.message_textbox.setPlaceholderText("Enter message")
 
-            send_button = QPushButton("Send Message", central_widget)
+            send_msg_button = QPushButton("Send Message", central_widget)
+            send_file_button = QPushButton("Send File", central_widget)
             # send_button.clicked.connect(self.sendMessage)
 
             layout.addWidget(message_label)
             layout.addWidget(self.message_textbox)
-            layout.addWidget(send_button)
+            layout.addWidget(send_msg_button)
+            layout.addWidget(send_file_button)
 
             self.new_window.show()
             self.close()  # Close the current window
@@ -129,13 +131,18 @@ class App(QWidget):
             threading.Thread(target=self.connectToServer,
                              args=(client_socket,)).start()
 
-    @pyqtSlot()
-    def onclick(self):
-        print("button clicked")
-        username = self.textbox.text()
+            send_msg_button.clicked.connect(lambda:
+                                            self.onMsgClick(client_socket))
 
-        print(username)
-        # self.close()
+    # @pyqtSlot()
+    def onMsgClick(self, client_socket):
+        msg = self.message_textbox.text()
+
+        threading.Thread(target=self.send_message, args=(
+            msg, client_socket,)).start()
+        QMessageBox.information(self, 'Message ',
+                                "Send Message Sucessfully!", QMessageBox.Ok, QMessageBox.Ok)
+        self.message_textbox.clear()
 
     def connectToServer(self, client_socket):
         while True:
@@ -172,6 +179,11 @@ class App(QWidget):
                 logging.error("An exception occurred at line %d: %s",
                               e.__traceback__.tb_lineno, e, exc_info=True)
                 sys.exit()
+
+    def send_message(self, message, client_socket):
+        message = message.encode('utf-8')
+        message_header = f"M{len(message):<{HEADER_LENGTH-1}}".encode('utf-8')
+        client_socket.send(message_header + message)
 
 
 if __name__ == "__main__":
