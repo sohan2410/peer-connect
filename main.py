@@ -32,9 +32,12 @@ HEADER_LENGTH = 10
 
 IP = get_ip()
 PORT = 1234
+user = ""
+msg = ""
 
 
 class App(QWidget):
+
     def __init__(self):
         super().__init__()
         self.title = "Welcome to P2P Center"
@@ -43,6 +46,7 @@ class App(QWidget):
         # self.right = 10
         self.width = 320
         self.height = 200
+
         self.initUI()
 
     def initUI(self):
@@ -70,6 +74,8 @@ class App(QWidget):
 
         layout.addLayout(hbox)
         self.center()
+
+        # hjkdgdhjs
 
         self.show()
 
@@ -134,14 +140,22 @@ class App(QWidget):
             send_msg_button.clicked.connect(lambda:
                                             self.onMsgClick(client_socket))
 
+            # after recievving message
+            self.sent_message_label = QLabel("", self)
+        layout.addWidget(self.sent_message_label)
+
     # @pyqtSlot()
     def onMsgClick(self, client_socket):
         msg = self.message_textbox.text()
+        if not msg:
+            QMessageBox.question(self, 'Message ',
+                                 "please Enter a Message", QMessageBox.Ok, QMessageBox.Ok)
+        else:
+            threading.Thread(target=self.send_message, args=(
+                msg, client_socket,)).start()
 
-        threading.Thread(target=self.send_message, args=(
-            msg, client_socket,)).start()
-        QMessageBox.information(self, 'Message ',
-                                "Send Message Sucessfully!", QMessageBox.Ok, QMessageBox.Ok)
+            # QMessageBox.information(self, 'Message ',
+            #                         "Send Message Sucessfully!", QMessageBox.Ok, QMessageBox.Ok)
         self.message_textbox.clear()
 
     def connectToServer(self, client_socket):
@@ -166,6 +180,10 @@ class App(QWidget):
                 else:
 
                     with thread_lock:
+                        user = username
+                        msg = message
+                        self.sent_message_label.setText(
+                            f"Received Message : {user} > {msg}")
                         print('\n' + f'{username} > {message}')
 
             except IOError as e:
