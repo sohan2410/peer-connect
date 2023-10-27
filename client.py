@@ -86,18 +86,10 @@ def send_file(filename):
     try:
         file_size = os.path.getsize(filename)
         print(file_size)
-        progress = tqdm.tqdm(range(
-            file_size), f"Sending {filename}", unit="B", unit_scale=True, unit_divisor=1024)
         with open(filename, 'rb') as file:
             message_header = f"F{file_size:<{HEADER_LENGTH-1}}".encode('utf-8')
-            client_socket.send(message_header)
-            while True:
-                data = file.read(1024)
-                if not data:
-                    break
-                client_socket.send(data)
-                progress.update(len(data))
-
+            client_socket.send(message_header + 'file'.encode('utf-8'))
+            client_socket.sendfile(file)
     except Exception as e:
         logging.error("An exception occurred at line %d: %s",
                       e.__traceback__.tb_lineno, e, exc_info=True)

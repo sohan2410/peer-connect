@@ -32,32 +32,18 @@ def receive_file(client_socket, message_length):
     try:
         filename = './tmp/' + str(int(time.time())) + '.txt'
         received = 0
-        data = b""
+        print('Message length: ', message_length)
         os.makedirs(os.path.dirname(filename), exist_ok=True)
-        print('file created')
-        f = open(filename, 'wb')
-        while received != message_length:
-            print('inside while')
-            new_data = client_socket.recv(1024)
-            if not len(new_data):
-                break
-            data += new_data
-            received += len(new_data)
-            f.write(new_data)
-            f.flush()
-        f.close()
-        print('data=>', data)
-
-        # with open(filename, "wb") as f:
-        #     while received != message_length:
-        #         new_data = client_socket.recv(message_length)
-        #         if not len(new_data):
-        #             break
-        #         data += new_data
-        #         received += len(new_data)
-        #     f.write(data)
-        #     f.flush()
-        #     f.close()
+        with open(filename, 'wb') as f:
+            while received != message_length:
+                new_data = client_socket.recv(2**15)
+                if not new_data:
+                    break
+                received += len(new_data)
+                f.write(new_data)
+            f.close()
+        print('File received:', filename)
+        return True
     except Exception as e:
         logging.error(f'Error in receive_file: {e}')
         return False
@@ -66,11 +52,11 @@ def receive_file(client_socket, message_length):
 def receive_message(client_socket):
     try:
         message_header = client_socket.recv(HEADER_LENGTH)
-        if not len(message_header):
-            return False
+        # if not len(message_header):
+        #     return False
 
-        if len(message_header) < HEADER_LENGTH:
-            return False
+        # if len(message_header) < HEADER_LENGTH:
+        #     return False
 
         # Extract the message length from the header
         # 'P5_username     '
