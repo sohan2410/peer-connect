@@ -32,16 +32,15 @@ def receive_file(client_socket, message_length):
     try:
         filename = './tmp/' + str(int(time.time())) + '.txt'
         received = 0
-        print('Message length: ', message_length)
         os.makedirs(os.path.dirname(filename), exist_ok=True)
         with open(filename, 'wb') as f:
             while received != message_length:
-                new_data = client_socket.recv(2**15)
+                new_data = client_socket.recv(message_length)
                 if not new_data:
                     break
                 received += len(new_data)
                 f.write(new_data)
-            f.close()
+                f.flush()
         print('File received:', filename)
         return True
     except Exception as e:
@@ -95,8 +94,9 @@ while True:
                 continue
             sockets_list.append(client_socket)
             clients[client_socket] = user
-            data.append(
-                {'username': user['data'].decode('utf-8'), 'ipaddr': client_address, 'socket': client_socket, 'status': 'online'})
+            # print(client_socket)
+            # data.append(
+            #     {'username': user['data'].decode('utf-8'), 'ipaddr': client_address, 'socket': client_socket, 'status': 'online'})
             print('Accepted new connection from {}:{}, username: {}'.format(
                 *client_address, user['data'].decode('utf-8')))
         else:

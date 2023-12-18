@@ -8,11 +8,11 @@ import os
 import tqdm
 
 from utils.sockets import get_ip
+from utils.helpers import find_in_dict
 
 logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s - Line %(lineno)d', level=logging.DEBUG)
 
-thread_lock = threading.Lock()
 
 HEADER_LENGTH = 10
 
@@ -22,18 +22,23 @@ my_username = input("Username: ")
 
 client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 client_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-
 client_socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
 client_socket.setsockopt(socket.SOL_SOCKET, socket.SO_PRIORITY, 0x06)
-# client_socket.bind((IP, 40046))
-
 client_socket.connect((IP, PORT))
 
-# client_socket.setblocking(False)
+client_send_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+client_send_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+client_send_socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+client_send_socket.setsockopt(socket.SOL_SOCKET, socket.SO_PRIORITY, 0x06)
+client_send_socket.connect((IP, PORT))
+
+# connected = [client_recv_socket]
+
 
 username = my_username.encode('utf-8')
 username_header = f"n{len(username):<{HEADER_LENGTH-1}}".encode('utf-8')
-client_socket.send(username_header + username)
+client_socket.sendall(username_header + username)
+client_send_socket.sendall(username_header + username)
 
 
 def on(client_socket):
@@ -53,8 +58,7 @@ def on(client_socket):
             if message_type == 'F':
                 pass
             else:
-                with thread_lock:
-                    print('\n' + f'{username} > {message}')
+                print('\n' + f'{username} > {message}')
 
         except IOError as e:
             if e.errno != errno.EAGAIN and e.errno != errno.EWOULDBLOCK:
@@ -79,7 +83,7 @@ def send_message(message, username=None):
         message_header = '{:<{}}'.format(
             message_type, HEADER_LENGTH).encode('utf-8')
     message = message.encode('utf-8')
-    client_socket.send(message_header + message)
+    client_socket.sendall(message_header + message)
 
 
 def send_file(filename):
@@ -88,8 +92,8 @@ def send_file(filename):
         print(file_size)
         with open(filename, 'rb') as file:
             message_header = f"F{file_size:<{HEADER_LENGTH-1}}".encode('utf-8')
-            client_socket.send(message_header + 'file'.encode('utf-8'))
-            client_socket.sendfile(file)
+            client_send_socket.sendall(message_header)
+            client_send_socket.sendfile(file)
     except Exception as e:
         logging.error("An exception occurred at line %d: %s",
                       e.__traceback__.tb_lineno, e, exc_info=True)
